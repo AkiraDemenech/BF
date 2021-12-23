@@ -13,6 +13,8 @@ class Brainfuck:
 	def __init__ (self, init = 0, cells = None, default = False, overflow = True, mod = 256, max = 30000, max_action = EXPAND, neg_action = CICLE_EXPAND):
 		if cells == None:
 			cells = []
+		if not len(cells):	
+			cells.append(default)
 		
 		self.cells = cells	
 		
@@ -27,15 +29,17 @@ class Brainfuck:
 		self.max_action = str(max_action).lower() 
 		self.max = max
 		
-		self.max_once = ONCE in self.max_action
-		self.max_block = BLOCK in self.max_action  
+		
 		self.max_cicle = CICLE in self.max_action
 		self.max_expand = EXPAND in self.max_action
+		self.max_block = BLOCK in self.max_action or not (self.max_cicle or self.max_expand)  
+		self.max_once = self.max_block and ONCE in self.max_action		
 		
-		self.min_once = ONCE in self.min_action
-		self.min_block = BLOCK in self.min_action  
+		
 		self.min_cicle = CICLE in self.min_action
 		self.min_expand = EXPAND in self.min_action
+		self.min_block = BLOCK in self.min_action or not (self.min_cicle or self.min_expand)
+		self.min_once = self.min_block and ONCE in self.min_action  
 		
 	def __lshift__ (self, left = True, cicle = None, block = None, once = None, expand = None):
 		if left < 0:
@@ -111,6 +115,36 @@ class Brainfuck:
 				else:	
 					self.pointer %= len(self.cells)
 			 			
-				
-				
-				
+	def __add__ (self, incr = True, index = None, overflow = None, mod = None):			
+		v = self.__getitem__(index) + incr
+		if overflow == None:
+			overflow = self.overflow
+		if overflow:	
+			if mod == None:
+				mod = self.mod
+			v %= mod	
+		self.__setitem__(value = v)		
+		return v 
+		
+	def __sub__ (self, decr = True, index = None, overflow = None, mod = None):					
+		return self.__add__(-decr, index, overflow, mod)	
+		
+	def __isub__ (self, decr = True, index = None, overflow = None, mod = None):	
+		return self.__sub__(decr, index, overflow, mod)
+		
+	def __iadd__ (self, incr = True, index = None, overflow = None, mod = None):	
+		return self.__add__(incr, index, overflow, mod)		
+		
+	def __getitem__ (self, index = None):			
+		if type(index) != int:
+			index = self.pointer
+		
+		return self.cells[index % len(self.cells)]	
+		
+	def __setitem__ (self, index = None, value = None):	
+		if type(index) != int:
+			index = self.pointer
+		if value == None:
+			value = self.default	
+		
+		self.cells[index % len(self.cells)] = value	
