@@ -16,8 +16,13 @@ DEC = '<'
 WHILE = '['
 END = ']'
 
+PRINT = '.'
+INPUT = ','
+
 BF = {ADD: lambda bf: bf.__add__(), SUB: lambda bf: bf.__sub__(), 
-INC: lambda bf: bf.__rshift__(), DEC: lambda bf: bf.__lshift__()}
+INC: lambda bf: bf.__rshift__(),	DEC: lambda bf: bf.__lshift__(), 
+WHILE: lambda bf: bf.loop_open(), END: lambda bf: bf.loop_close(),
+INPUT: lambda bf: bf.input(),	PRINT: lambda bf: bf.print()}
 
 class Brainfuck:
 	
@@ -52,8 +57,9 @@ class Brainfuck:
 		self.min_block = BLOCK in self.min_action or not (self.min_cicle or self.min_expand)
 		self.min_once = self.min_block and ONCE in self.min_action  
 
-		self.loop_stack = self.progr = []
+		self.loop_stack = self.progr = self.buffer = []
 		self.instruction = False 
+		
 		
 	def __lshift__ (self, left = True, cicle = None, block = None, once = None, expand = None):
 		if left < 0:
@@ -115,12 +121,11 @@ class Brainfuck:
 					expand = self.max_expand				
 				
 				if expand:
-					while self.pointer % (len(self.cells) - 1) != 0:
-						if block and len(self.cells) >= self.max: 							
-							break
-						self.cells.append(self.default)
-					else:	
-						return
+					while len(self.cells) < self.max or not block:
+						self.cells.append(self.default)						
+						if self.pointer % (len(self.cells) - 1) == 0: 							
+							return						
+						
 				
 				if block:		
 					if once == None:
@@ -173,12 +178,18 @@ class Brainfuck:
 
 		i = not self.__getitem__()
 		if i:				
-			while i:
-				self.instruction += 1
-				c = self.instruction % len(self.progr)
-				if c == 0:
-					break 
-				i += (self.progr[c] == open) - (self.progr[c] == close)							
+			if type(close) == int:		
+				self.instruction = close
+			else:	
+				while i:
+					self.instruction += 1
+
+					c = self.instruction % len(self.progr)
+					if c == 0:
+						break 
+
+					i += 1 if (self.progr[c] == open) else -(self.progr[c] == close) 							
+			
 			return  
 		self.loop_stack.append(self.instruction)
 
@@ -192,7 +203,7 @@ class Brainfuck:
 	def step (self):	
 		if self.instruction >= len(self.progr):
 			raise StopIteration(f'{self.instruction} >= {len(self.progr)}')
-		self.__next__()
+		return self.__next__()
 
 	 
 
@@ -208,6 +219,8 @@ class Brainfuck:
 			pass
 		self.instruction = i + 1 
 
+		return self.instruction 
+
 
 
 	def __iter__ (self, brainfuck = BF):	
@@ -217,6 +230,19 @@ class Brainfuck:
 			yield self.__next__(brainfuck=brainfuck) 
 
 	#	self.loop_stack = self.instruction = None
+
+
+	def print (self):
+		print(end = chr(self.__getitem__()))
+
+	def input (self):	
+		if not len(self.buffer): 
+			self.buffer = list(input())
+			self.buffer.append('\n')
+		self.__setitem__(value = ord(self.buffer.pop(0)))	
+
+
+
 
 
 		
