@@ -8,6 +8,17 @@ CICLE_EXPAND = CICLE + EXPAND
 ONCE = 'once'
 BLOCK_ONCE = BLOCK + ONCE
 
+ADD = '+'
+SUB = '-'
+INC = '>'
+DEC = '<'
+
+WHILE = '['
+END = ']'
+
+BF = {ADD: lambda bf: bf.__add__(), SUB: lambda bf: bf.__sub__(), 
+INC: lambda bf: bf.__rshift__(), DEC: lambda bf: bf.__lshift__()}
+
 class Brainfuck:
 	
 	def __init__ (self, init = 0, cells = None, default = False, overflow = True, mod = 256, max = 30000, max_action = EXPAND, neg_action = CICLE_EXPAND):
@@ -40,6 +51,9 @@ class Brainfuck:
 		self.min_expand = EXPAND in self.min_action
 		self.min_block = BLOCK in self.min_action or not (self.min_cicle or self.min_expand)
 		self.min_once = self.min_block and ONCE in self.min_action  
+
+		self.loop_stack = self.progr = []
+		self.instruction = False 
 		
 	def __lshift__ (self, left = True, cicle = None, block = None, once = None, expand = None):
 		if left < 0:
@@ -50,8 +64,8 @@ class Brainfuck:
 		
 		if self.pointer < 0:
 		
-			if circle == None:
-				circle = self.min_cicle
+			if cicle == None:
+				cicle = self.min_cicle
 				
 		
 			min = - cicle * len(self.cells) 
@@ -88,8 +102,8 @@ class Brainfuck:
 		
 		if self.pointer >= len(self.cells):	
 			
-			if circle == None:
-				circle = self.max_cicle
+			if cicle == None:
+				cicle = self.max_cicle
 				
 		
 			max = (1 + cicle) * len(self.cells) 
@@ -148,3 +162,61 @@ class Brainfuck:
 			value = self.default	
 		
 		self.cells[index % len(self.cells)] = value	
+
+	def loop_close (self):
+		try:
+			self.instruction = self.loop_stack.pop()
+		except IndexError:	
+			return
+
+	def loop_open (self, open = WHILE, close = END):
+
+		i = not self.__getitem__()
+		if i:				
+			while i:
+				self.instruction += 1
+				c = self.instruction % len(self.progr)
+				if c == 0:
+					break 
+				i += (self.progr[c] == open) - (self.progr[c] == close)							
+			return  
+		self.loop_stack.append(self.instruction)
+
+
+
+	def start (self, progr, init = False):	
+		self.progr = progr
+		self.loop_stack.clear()
+		self.instruction = init 
+
+	def step (self):	
+		if self.instruction >= len(self.progr):
+			raise StopIteration(f'{self.instruction} >= {len(self.progr)}')
+		self.__next__()
+
+	 
+
+	def __next__ (self, progr = None, i = None, brainfuck = BF):
+		if i == None:
+			i = self.instruction
+		if progr == None:	
+			progr = self.progr
+
+		try:
+			brainfuck[progr[i%len(progr)]](self)	
+		except KeyError:	
+			pass
+		self.instruction = i + 1 
+
+
+
+	def __iter__ (self, brainfuck = BF):	
+		
+
+		while self.instruction < len(self.progr):	
+			yield self.__next__(brainfuck=brainfuck) 
+
+	#	self.loop_stack = self.instruction = None
+
+
+		
